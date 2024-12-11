@@ -1,23 +1,8 @@
-const express = require('express');
-const cors = require('cors');
 const nodemailer = require('nodemailer');
-require('dotenv').config();
-
-const app = express();
-
-// Configure CORS
-app.use(cors({
-  origin: '*', // Allow all origins temporarily for testing
-  methods: ['GET', 'POST'],
-  credentials: true,
-  optionsSuccessStatus: 200
-}));
-
-app.use(express.json());
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: process.env.REACT_APP_SMTP_PORT || 465,
+  port: 465,
   secure: true,
   auth: {
     user: process.env.REACT_APP_SMTP_USER,
@@ -114,17 +99,16 @@ const emailTemplates = {
   }
 };
 
-// Health check endpoint
-app.get('/', (req, res) => {
-  res.json({ status: 'Server is running' });
-});
-
-app.post('/api/send-email', async (req, res) => {
-  console.log('Received email request:', req.body); // Add logging
-  const { email, language, city } = req.body;
-  const template = emailTemplates[language] || emailTemplates.en;
+exports.handler = async function(event, context) {
+  // Only allow POST
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method Not Allowed' };
+  }
 
   try {
+    const { email, language, city } = JSON.parse(event.body);
+    const template = emailTemplates[language] || emailTemplates.en;
+
     await transporter.sendMail({
       from: process.env.REACT_APP_SMTP_USER,
       to: email,
@@ -132,15 +116,15 @@ app.post('/api/send-email', async (req, res) => {
       html: template.html(city),
     });
 
-    console.log('Email sent successfully to:', email); // Add logging
-    res.json({ message: 'Email sent successfully' });
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: 'Email sent successfully' })
+    };
   } catch (error) {
-    console.error('Error sending email:', error); // Add logging
-    res.status(500).json({ message: 'Failed to send email', error: error.message });
+    console.error('Error sending email:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: 'Failed to send email', error: error.message })
+    };
   }
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-}); 
+}; 

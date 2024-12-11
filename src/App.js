@@ -79,7 +79,7 @@ function App() {
     setSelectedUser(user.id);
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/send-email`, {
+      const response = await fetch('/.netlify/functions/send-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
